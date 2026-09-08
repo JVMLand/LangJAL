@@ -72,11 +72,11 @@ hair-pulling `VerifyError`s.
 ## 📦 Installation
 
 JAL is available as
-a [Javasm IntelliJ plugin](https://plugins.jetbrains.com/plugin/27944-javasm), [jal-gradle-plugin](https://github.com/PeyaPeyaPeyang/jal-gradle-plugin)
-or [JAL CLI Compiler](https://github.com/PeyaPeyaPeyang/LangJAL/releases)
+a [Javasm IntelliJ plugin](https://plugins.jetbrains.com/plugin/27944-javasm), [jal-gradle-plugin](https://github.com/JVMLand/jal-gradle-plugin)
+or [JAL CLI Compiler](https://github.com/JVMLand/LangJAL/releases)
 
 To install the JAL CLI Compiler, download the latest release from
-the [releases page](https://github.com/PeyaPeyaPeyang/LangJAL/releases)
+the [releases page](https://github.com/JVMLand/LangJAL/releases)
 and decompress it to a directory of your choice.
 To use the JAL CLI Compiler, add the `bin` directory to your system's PATH environment variable.
 

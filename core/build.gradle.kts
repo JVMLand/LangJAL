@@ -60,7 +60,7 @@ metadata {
     license {
         shortName = "MIT"
         fullName = "MIT License"
-        url = "https://github.com/PeyaPeyaPeyang/LangJAL/blob/main/LICENSE"
+        url = "https://github.com/JVMLand/LangJAL/blob/main/LICENSE"
     }
     developers {
         register("peyang") {
@@ -70,7 +70,7 @@ metadata {
     }
 
     github {
-        org = "PeyaPeyaPeyang"
+        org = "JVMLand"
         repo = "LangJAL"
     }
 }
