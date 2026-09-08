@@ -1,7 +1,12 @@
 package tokyo.peya.langjal.analyser;
 
 import org.jetbrains.annotations.NotNull;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LookupSwitchInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TableSwitchInsnNode;
 import tokyo.peya.langjal.analyser.stack.LocalStackElement;
 import tokyo.peya.langjal.analyser.stack.StackElement;
 import tokyo.peya.langjal.compiler.FileEvaluatingReporter;
@@ -9,8 +14,10 @@ import tokyo.peya.langjal.compiler.member.LabelInfo;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Creates a map of stack frames for a given method based on frame propagations.
@@ -139,8 +146,7 @@ public class StackFrameMapCreator {
      * @return an array of {@link StackFrameMapEntry} representing the stack frame map
      * for the method, or an empty array if there are no frames to process.
      * <p>
-     * Note: The stack frame map is created only if there are multiple frames to process.
-     * If there is only one frame or none, it returns an empty array.
+     * The initial frame is implicit unless bytecode offset zero is a branch target.
      */
     public StackFrameMapEntry[] createStackFrameMap() {
         this.context.postInfo("Creating stack frame map for method: " + this.method.name);
@@ -150,12 +156,19 @@ public class StackFrameMapCreator {
                         .sorted(Comparator.comparingInt(frame -> frame.label().instructionIndex()))
                         .toList();
         this.printFrames(frames);
-        if (frames.size() < 2) {
+        boolean emitInitialFrame = !frames.isEmpty() && this.isEntryBranchTarget();
+        if (frames.size() < 2 && !emitInitialFrame) {
             this.context.postInfo("No need to compute frames, StackFrameMap will be empty.");
             return new StackFrameMapEntry[0];
         }
 
-        StackFrameMapEntry[] stackFrameMap = new StackFrameMapEntry[frames.size() - 1];
+        int initialFrameCount = emitInitialFrame ? 1 : 0;
+        StackFrameMapEntry[] stackFrameMap = new StackFrameMapEntry[frames.size() - 1 + initialFrameCount];
+        if (emitInitialFrame) {
+            InstructionSetFrame first = frames.getFirst();
+            // Merged entry locals may differ from the descriptor's implicit frame.
+            stackFrameMap[0] = StackFrameMapEntry.full(first, first, first.stack(), first.locals());
+        }
         // 各フレームの次のフレームを計算する
         for (int i = 0; i < frames.size() - 1; i++) {
             InstructionSetFrame previous = frames.get(i);
@@ -163,11 +176,35 @@ public class StackFrameMapCreator {
             StackFrameMapEntry nextFrame = computeNextFrame(previous, next);
             this.context.postDebug("Computed StackMap frame transition " + previous.label().name() +
                     " -> " + next.label().name() + ": " + nextFrame);
-            stackFrameMap[i] = nextFrame;
+            stackFrameMap[i + initialFrameCount] = nextFrame;
         }
 
         this.context.postInfo("Stack frame map created with " + stackFrameMap.length + " entries.");
         return stackFrameMap;
+    }
+
+    private boolean isEntryBranchTarget() {
+        Set<LabelNode> entryLabels = new HashSet<>();
+        for (AbstractInsnNode instruction : this.method.instructions) {
+            if (instruction.getOpcode() >= 0)
+                break;
+            if (instruction instanceof LabelNode label)
+                entryLabels.add(label);
+        }
+
+        // Inspect bytecode: a single-block self-loop can share its propagation
+        // with method entry, so propagation senders alone cannot identify it.
+        for (AbstractInsnNode instruction : this.method.instructions) {
+            if (instruction instanceof JumpInsnNode jump && entryLabels.contains(jump.label))
+                return true;
+            if (instruction instanceof TableSwitchInsnNode table &&
+                    (entryLabels.contains(table.dflt) || table.labels.stream().anyMatch(entryLabels::contains)))
+                return true;
+            if (instruction instanceof LookupSwitchInsnNode lookup &&
+                    (entryLabels.contains(lookup.dflt) || lookup.labels.stream().anyMatch(entryLabels::contains)))
+                return true;
+        }
+        return false;
     }
 
     private StackFrameMapEntry computeNextFrame(@NotNull InstructionSetFrame previous,
