@@ -31,7 +31,7 @@ public class InstructionEvaluatorInvokeSpecial
             if (actualElm instanceof UninitializedThisElement)
                 return new ObjectElement(
                         instruction,
-                        TypeDescriptor.className(method.owner)
+                        TypeDescriptor.className(instruction.ownerClass().name)
                 );
 
             return actualElm; // 通常の ObjectElement であればそのまま返す
