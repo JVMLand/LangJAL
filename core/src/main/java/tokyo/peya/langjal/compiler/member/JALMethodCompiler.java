@@ -123,6 +123,17 @@ public class JALMethodCompiler {
         this.clazz.methods.add(this.method);
 
         this.evaluateMethodMetadata(method);
+        if ((this.method.access & (EOpcodes.ACC_ABSTRACT | EOpcodes.ACC_NATIVE)) != 0) {
+            if (!method.methodBody().instructionSet().isEmpty())
+                throw new IllegalValueException(
+                        "Abstract or native method must have an empty body.",
+                        method.methodBody()
+                );
+
+            this.method.visitEnd();
+            return;
+        }
+
         this.evaluateMethodParameters(method);
         this.evaluateMethodBody(method.methodBody());
         if ((this.compileFlags & CompileSettings.COMPUTE_STACK_FRAME_MAP) != 0)
